@@ -45,35 +45,39 @@ def flash_go(path_to_zip_file, com_port):
         strs = strs + " " + st
     process_2 = subprocess.run(strs, shell=True, capture_output=True)
     rmtree("update")
+    with open("log.txt", "w") as f:
+        f.write(process_2.stdout.decode())
     return process_2.returncode
 
 
 def main():
-    ports = list(serial.tools.list_ports.comports())
     choose_list = []
-    for p in ports:
-        choose_list.append(str(p[0]))
     # All the stuff inside your window.
     layout = [[sg.Text('Select the zip archive with the new firmware')],
               [sg.Text('File path:'), sg.Input(size=(25, 25)), sg.FileBrowse()],
               [sg.Text('Select your device from the port list'),
-               sg.Combo(choose_list, default_value=' ', size=(10, 10))],
+               sg.Combo(values=choose_list, key="coms", default_value=' ', size=(10, 10))],
               [sg.Button('Flash'), LEDIndicator('_runing_')]]
 
     # Create the Window
     window = sg.Window('Esptool Simple Smart Wraper', layout,finalize=True)
     # Event Loop to process "events" and get the "values" of the inputs
-    SetLED(window, '_runing_', 'green')
     while True:
-
-        event, values = window.read()
+        ports = list(serial.tools.list_ports.comports())
+        choose_list.clear()
+        for p in ports:
+            choose_list.append(str(p[0]))
+        if not choose_list:
+            choose_list.append(' ')
+        window["coms"].update(value=choose_list[0], values=choose_list)
+        event, values = window.read(timeout=1000)
         if event == sg.WIN_CLOSED:
             break
         if event == "Flash":
             window.disable()
             SetLED(window, '_runing_', 'yellow')
             window.refresh()
-            if flash_go(values[0], values[1]) == 0:
+            if flash_go(values[0], values["coms"]) == 0:
                 SetLED(window, '_runing_', 'green')
             else:
                 SetLED(window, '_runing_', 'red')
